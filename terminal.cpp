@@ -52,9 +52,67 @@ char getch()
   return buf;
 }
 
+string selectList(string options[], int length)
+{
+  bool ok = false;
+  int selected = 0;
+  cout << "\033[?25l";
+  do
+  {
+    for (int i = 0; i < length; i++)
+    {
+      if (i == selected)
+      {
+        cout << ">" << flush;
+      }
+      else
+      {
+        cout << " " << flush;
+      }
+      cout << " " << i + 1 << "." << " " << options[i] << endl
+           << flush;
+    }
+
+    int c = getch();
+
+    if (c == 27)
+    {
+      int c2 = getch();
+      int c3 = getch();
+
+      if (c3 == 'A')
+      {
+        selected--;
+        if (selected < 0)
+        {
+          selected = length - 1;
+        }
+      }
+      if (c3 == 'B')
+      {
+        selected++;
+        if (selected > (length - 1))
+        {
+          selected = 0;
+        }
+      }
+
+      cout << "\033[3A";
+    }
+
+    if (c == 10)
+    {
+      ok = true;
+    }
+  } while (!ok);
+  cout << "\033[?25h";
+
+  return options[selected];
+}
+
 int main()
 {
-  system("clear");
+  int loading = 0;
   auto [width, height] = getTerminalSize();
   string titleLines[9] = {
       "               _____ _                 _   ____      _ _       __             ",
@@ -67,24 +125,35 @@ int main()
       " |  _ <  __/\\__ \\ (_) | |_| | | | (_|  __/   | || | | (_| | (__|   <  __/ |   ",
       " |_| \\_\\___||___/\\___/ \\__,_|_|  \\___\\___|   |_||_|  \\__,_|\\___|_|\\_\\___|_|   "};
 
+  cout << "\033c";
   cout << "\033[" << static_cast<int>((height - 9) / 2) << "B";
-
   for (int i = 0; i < 9; i++)
     cout << "\033[" << static_cast<int>((width - 79) / 2) << "C" << titleLines[i] << endl;
 
   cout << endl
-       << "\033[" << static_cast<int>((width - 15) / 2) << "C";
-
-  int loading = 100;
-
+       << "\033[?25l";
   for (int i = 0; i < 15; i++)
   {
-    // loading += 7;
+    loading += 7;
     wait(200);
-    cout << "█" << flush;
+    cout << "\033[" << static_cast<int>((width - 15) / 2) + i << "C" << "█" << flush;
+    cout << endl
+         << "\033[" << static_cast<int>((width - 13) / 2) << "C" << "Loading..." << loading << endl;
+    cout << "\033[2A";
   }
-  cout << endl
-       << "\033[" << static_cast<int>((width - 13) / 2) << "C" << "Loading..." << loading << endl;
+  cout << "\033[?25h";
+
+  cout << "\033c";
+
+  string options[3] = {"Option A", "Option B", "Option C"};
+
+  cout << "Welcome to my app" << endl;
+
+  string choice = selectList(options, 3);
+
+  cout << choice << endl;
+
+  // cout << endl << "\033[" << static_cast<int>((width - 13) / 2) << "C" << "Loading..." << loading << endl;
 
   // int randomNumber = generateRandom(0, 9);
 
