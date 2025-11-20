@@ -3,12 +3,13 @@
 #include <ctime>
 #include <cstdlib>
 #include <unistd.h>
-#include <sys/ioctl.h>
 #include <chrono>
 #include <thread>
 #include <random>
-#include <termios.h>
 #include <unistd.h>
+#include <conio.h>
+#include <windows.h>
+#include <utility>
 
 using namespace std;
 using namespace this_thread;
@@ -33,23 +34,19 @@ void wait(int ms)
 
 pair<int, int> getTerminalSize()
 {
-  struct winsize w;
-  ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-  return {w.ws_col, w.ws_row};
-}
+  HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
 
-char getch()
-{
-  char buf = 0;
-  struct termios old = {0};
-  tcgetattr(STDIN_FILENO, &old);
-  struct termios newt = old;
-  newt.c_lflag &= ~ICANON;
-  newt.c_lflag &= ~ECHO;
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  read(STDIN_FILENO, &buf, 1);
-  tcsetattr(STDIN_FILENO, TCSANOW, &old);
-  return buf;
+  if (!GetConsoleScreenBufferInfo(hConsole, &csbi))
+  {
+    // Agar error aaye to default size return karo
+    return {80, 25};
+  }
+
+  int columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+  int rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+
+  return {columns, rows};
 }
 
 string selectList(string options[], int length)
@@ -75,36 +72,33 @@ string selectList(string options[], int length)
 
     int c = getch();
 
-    if (c == 27)
+    if (c == 72)
     {
-      int c2 = getch();
-      int c3 = getch();
-
-      if (c3 == 'A')
+      selected--;
+      if (selected < 0)
       {
-        selected--;
-        if (selected < 0)
-        {
-          selected = length - 1;
-        }
+        selected = length - 1;
       }
-      if (c3 == 'B')
+    }
+    if (c == 80)
+    {
+      selected++;
+      if (selected > (length - 1))
       {
-        selected++;
-        if (selected > (length - 1))
-        {
-          selected = 0;
-        }
+        selected = 0;
       }
-
-      cout << "\033[3A";
     }
 
-    if (c == 10)
+    if (c == 13)
     {
       ok = true;
     }
+    else
+    {
+      cout << "\033[3A";
+    }
   } while (!ok);
+
   cout << "\033[?25h";
 
   return options[selected];
@@ -136,7 +130,7 @@ int main()
   {
     loading += 7;
     wait(200);
-    cout << "\033[" << static_cast<int>((width - 15) / 2) + i << "C" << "█" << flush;
+    cout << "\033[" << static_cast<int>((width - 15) / 2) + i << "C" << "|" << flush;
     cout << endl
          << "\033[" << static_cast<int>((width - 13) / 2) << "C" << "Loading..." << loading << endl;
     cout << "\033[2A";
